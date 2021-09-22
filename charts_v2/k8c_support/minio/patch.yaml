@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+spec:
+  template:
+    spec:
+      containers:
+      - name: backup
+        image: 'quay.io/kubermatic/util:2.0.0'
+        args:
+        - /bin/sh
+        - -c
+        - mc config host add src http://127.0.0.1:9000 "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" && while true; do sleep 1h; done
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio
+              key: accesskey
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio
+              key: secretkey
+        volumeMounts:
+        - mountPath: /backup
+          name: minio-backup
+          readOnly: false
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        resources:
+          limits:
+            cpu: 1
+            memory: 1500Mi
+          requests:
+            cpu: 50m
+            memory: 32Mi
+      volumes:
+      - name: minio-backup
+        emptyDir: {}
