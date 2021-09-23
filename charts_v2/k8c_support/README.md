@@ -34,3 +34,14 @@ e.g. In case of minio, you can see that kustomization
 * But advantage of this option is, since we are writing helm template, we can take advantage of templating constructs like if/else and other go templating functions.
 
 e.g. In case of minio, you can see that a file `secret-external.yaml` was added in templates folder of parent chart. It refers to `minio.accessKey` and `minio.secretKey` variables to generate dynamic content as per values provided by end user.
+
+## Installing the new charts
+To install new charts, we must make use of `--post-renderer` param to make use of kustomize.
+```
+cd <KUBERMATIC_ROOT>/charts_v2
+helm dependency update
+# e.g to install minio chart
+cd minio
+helm upgrade minio --install --namespace minio --create-namespace ../ --values ../values.override.yaml --post-renderer ../kustomize.sh
+# similarly to install any of the new charts.. cd to it's directory and run updated helm upgrade command.
+```

@@ -1,0 +1,27 @@
+minio:
+  enabled: false
+  # master Values.yaml for minio at https://github.com/minio/charts/blob/master/minio/values.yaml
+  nameOverride: minio
+  image:
+    tag: RELEASE.2021-08-20T18-32-01Z
+  accessKey: ''
+  secretKey: ''
+  persistence:
+    size: 100Gi
+  resources:
+    limits:
+      cpu: 1
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 32Mi
+  environment:
+    MINIO_PROMETHEUS_AUTH_TYPE: public
+  podAnnotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path:   '/minio/prometheus/metrics'
+    prometheus.io/port:   '9000'
+  # Optionally, customize these, as needed.
+  # nodeSelector: {}
+  # tolerations: []
+  # affinity: {}

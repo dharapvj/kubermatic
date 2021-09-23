@@ -2,7 +2,7 @@ resources:
   - all.yaml
 #  - secret-external.yaml
 patches:
-  - path: patch.yaml
+  - path: kustomize/patch.yaml
 
 # On initial thoughts, replacements path should be avoided, as its too verbose to me. 
 # But it might come handy to read things from rendered chart and use them in augmented charts.
