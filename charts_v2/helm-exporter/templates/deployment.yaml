@@ -41,9 +41,9 @@ spec:
           image: '{{ .Values.helmExporter.image.repository }}:{{ .Values.helmExporter.image.tag }}'
           imagePullPolicy: {{ .Values.helmExporter.image.pullPolicy }}
           args:
-            {{- if .Values.helmExporter.namespace}}
-            - "-namespaces"
-            {{- .Values.helmExporter.namespace}}
+            {{- if .Values.helmExporter.namespace }}
+            - '-namespaces'
+            - {{ .Values.helmExporter.namespace }}
             {{- end }}
           ports:
             - name: http
@@ -57,12 +57,13 @@ spec:
             httpGet:
               path: /healthz
               port: http
+
           resources:
-      {{ toYaml .Values.helmExporter.resources | indent 10 }}
+{{ toYaml .Values.helmExporter.resources | indent 12 }}
       serviceAccountName: '{{ template "name" . }}'
       nodeSelector:
-      {{ toYaml .Values.helmExporter.nodeSelector | indent 8 }}
+{{ toYaml .Values.helmExporter.nodeSelector | indent 8 }}
       affinity:
-      {{ toYaml .Values.helmExporter.affinity | indent 8 }}
+{{ toYaml .Values.helmExporter.affinity | indent 8 }}
       tolerations:
-  {{ toYaml .Values.helmExporter.tolerations | indent 8 }}
+{{ toYaml .Values.helmExporter.tolerations | indent 8 }}
