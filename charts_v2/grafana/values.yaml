@@ -1,0 +1,84 @@
+grafana:
+  adminUser: admin
+  adminPassword: '' # generate a strong random password
+  resources:
+    requests:
+      cpu: 250m
+      memory: 48Mi
+    limits:
+      cpu: 1
+      memory: 128Mi
+
+  nodeSelector: {}
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app: grafana
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+  tolerations: []
+  plugins:
+  - grafana-piechart-panel 1.6.2
+  - farski-blendstat-panel 1.0.3
+  - michaeldmoore-multistat-panel 1.7.2
+  - vonage-status-panel 1.0.11
+  sidecar:
+    dashboards:
+      enabled: true
+    datasources:
+      enabled: true
+  # Control where the provisioning files are located.
+  # If you want to *not* use the predefined ones, this
+  # allows you to specify your own directory without
+  # having to touch the existing files. If you only want
+  # to add new elements, you can just place your YAML files
+  # into the directories.
+  provisioning:
+    dashboards:
+      source: provisioning/dashboards/*
+      definitions: "dashboards/**"
+      # You can specify additional dashboard sources inline as well.
+      #extra:
+      #- folder: "Initech Resources"
+      #  name: "initech"
+      #  options:
+      #    path: /grafana-dashboard-definitions/initech
+      #  org_id: 1
+      #  type: file
+
+    datasources:
+      # Kubernetes Service names to configure as data sources.
+      # Names can take the form of `service[.namespace=Release.Namespace][:port=9090]`
+      # and the service name itself must be unique.
+      prometheusServices:
+      - prometheus
+      # - prometheus-thanos-query:10902
+
+      lokiServices: []
+      # - loki
+
+      # read datasources from this path in the Helm chart; this is
+      # evaluated during deployment, not during Grafana runtime!
+      source: provisioning/datasources/*
+
+      # If you have more datasources from additional volumes,
+      # specify their mount paths here to have them copied to
+      # /etc/grafana/provisioning/datasources. Files will get
+      # a prefix to ensure that identical filenames from
+      # multiple paths do not overwrite each other.
+      paths:
+      - /etc/grafana/provisioning/default-datasources
+
+      # You can specify additional datasources inline as well.
+      #extra:
+      #- name: influxdb
+      #  type: influxdb
+      #  access: proxy
+      #  org_id: 1
+      #  url: http://influxdb.monitoring.svc.cluster.local:9090
+      #  version: 1
+      #  editable: false
+
