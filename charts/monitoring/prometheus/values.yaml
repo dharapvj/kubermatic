@@ -280,9 +280,11 @@ prometheus:
         requests:
           cpu: 500m
           memory: 2Gi
+          ephemeral-storage: 0.5Gi
         limits:
           cpu: 2
           memory: 4Gi
+          ephemeral-storage: 20Gi   # Ensures that only Thanos compact fails if it uses too much temporary disk without impacting other pods
     thanosUI:
       resources:
         requests:
