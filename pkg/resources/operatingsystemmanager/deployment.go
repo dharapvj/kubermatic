@@ -23,13 +23,13 @@ import (
 
 	semverlib "github.com/Masterminds/semver/v3"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	kubermaticv1helper "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1/helper"
 	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/apiserver"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 	"k8c.io/reconciler/pkg/reconciling"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -57,11 +57,10 @@ var (
 )
 
 const (
-	Tag = "db378951daf3f65467dbd0ff57126ba8b2a98a4c"
+	Tag = "v1.6.0"
 )
 
 type operatingSystemManagerData interface {
-	GetPodTemplateLabels(string, []corev1.Volume, map[string]string) (map[string]string, error)
 	GetGlobalSecretKeySelectorValue(configVar *providerconfig.GlobalSecretKeySelector, key string) (string, error)
 	Cluster() *kubermaticv1.Cluster
 	RewriteImage(string) (string, error)
@@ -98,6 +97,8 @@ func DeploymentReconciler(data operatingSystemManagerData) reconciling.NamedDepl
 func DeploymentReconcilerWithoutInitWrapper(data operatingSystemManagerData) reconciling.NamedDeploymentReconcilerFactory {
 	return func() (string, reconciling.DeploymentReconciler) {
 		return resources.OperatingSystemManagerDeploymentName, func(dep *appsv1.Deployment) (*appsv1.Deployment, error) {
+			var err error
+
 			baseLabels := resources.BaseAppLabels(resources.OperatingSystemManagerDeploymentName, nil)
 			kubernetes.EnsureLabels(dep, baseLabels)
 
@@ -109,15 +110,6 @@ func DeploymentReconcilerWithoutInitWrapper(data operatingSystemManagerData) rec
 				MatchLabels: baseLabels,
 			}
 
-			volumes := []corev1.Volume{getKubeconfigVolume()}
-			dep.Spec.Template.Spec.Volumes = volumes
-
-			podLabels, err := data.GetPodTemplateLabels(resources.OperatingSystemManagerDeploymentName, volumes, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create pod labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&dep.Spec.Template, map[string]string{
 				"prometheus.io/scrape":                 "true",
 				"prometheus.io/path":                   "/metrics",
@@ -231,6 +223,8 @@ func DeploymentReconcilerWithoutInitWrapper(data operatingSystemManagerData) rec
 					},
 				},
 			}
+
+			dep.Spec.Template.Spec.Volumes = []corev1.Volume{getKubeconfigVolume()}
 
 			dep.Spec.Template.Spec.ServiceAccountName = serviceAccountName
 

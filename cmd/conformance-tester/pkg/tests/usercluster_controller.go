@@ -117,50 +117,13 @@ func TestUserClusterSeccompProfiles(ctx context.Context, log *zap.SugaredLogger,
 		}
 		// TODO remove this
 		// https://github.com/kubermatic/kubermatic/pull/12752#discussion_r1367133164
-		if pod.Labels["k8s-app"] == "hubble-ui" || pod.Labels["k8s-app"] == "hubble-generate-certs" {
+		if pod.Labels["k8s-app"] == "hubble-generate-certs" {
 			continue
 		}
 
-		var privilegedContainers int
-		for _, container := range pod.Spec.Containers {
-			if container.SecurityContext != nil && container.SecurityContext.Privileged != nil && *container.SecurityContext.Privileged {
-				privilegedContainers++
-			}
-		}
-
-		// all containers in the Pod are running as privileged, we can skip the Pod; privileged mode disables any seccomp profile
-		if len(pod.Spec.Containers) == privilegedContainers {
-			continue
-		}
-
-		// no security context means no seccomp profile
-		if pod.Spec.SecurityContext == nil {
-			errorMsgs = append(
-				errorMsgs,
-				fmt.Sprintf("expected security context on Pod %s/%s, got none", pod.Namespace, pod.Name),
-			)
-			continue
-		}
-
-		// no seccomp profile means no profile is applied to the containers
-		if pod.Spec.SecurityContext.SeccompProfile == nil {
-			errorMsgs = append(
-				errorMsgs,
-				fmt.Sprintf("expected seccomp profile on Pod %s/%s, got none", pod.Namespace, pod.Name),
-			)
-			continue
-		}
-
-		// the 'unconfined' profile disables any seccomp filtering
-		if pod.Spec.SecurityContext.SeccompProfile.Type == corev1.SeccompProfileTypeUnconfined {
-			errorMsgs = append(
-				errorMsgs,
-				fmt.Sprintf(
-					"seccomp profile of Pod %s/%s is '%s', should be '%s' or '%s'", pod.Namespace, pod.Name,
-					corev1.SeccompProfileTypeUnconfined, corev1.SeccompProfileTypeRuntimeDefault, corev1.SeccompProfileTypeLocalhost,
-				),
-			)
-			continue
+		err := validatePodSecurityContext(&pod)
+		if err != nil {
+			errorMsgs = append(errorMsgs, fmt.Sprintf("Pod %s/%s invalid: %v", pod.Namespace, pod.Name, err))
 		}
 	}
 
@@ -170,6 +133,17 @@ func TestUserClusterSeccompProfiles(ctx context.Context, log *zap.SugaredLogger,
 
 	return errors.New(strings.Join(errorMsgs, "\n"))
 }
+
+const (
+	// legacyRegistryK8SGCR defines the kubernetes specific docker registry at google.
+	legacyRegistryK8SGCR = "k8s.gcr.io"
+	// legacyRegistryEUGCR defines the docker registry at google EU.
+	legacyRegistryEUGCR = "eu.gcr.io"
+	// legacyRegistryUSGCR defines the docker registry at google US.
+	legacyRegistryUSGCR = "us.gcr.io"
+	// legacyRegistryGCR defines the kubernetes docker registry at google.
+	legacyRegistryGCR = "gcr.io"
+)
 
 func TestUserClusterNoK8sGcrImages(ctx context.Context, log *zap.SugaredLogger, opts *ctypes.Options, cluster *kubermaticv1.Cluster, userClusterClient ctrlruntimeclient.Client) error {
 	if !opts.Tests.Has(ctypes.UserClusterSeccompTests) {
@@ -188,15 +162,15 @@ func TestUserClusterNoK8sGcrImages(ctx context.Context, log *zap.SugaredLogger, 
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
-			if strings.HasPrefix(container.Image, resources.RegistryK8SGCR) {
+			if strings.HasPrefix(container.Image, legacyRegistryK8SGCR) {
 				errorMsgs = append(
 					errorMsgs,
 					fmt.Sprintf("Container %s in Pod %s/%s has image from k8s.gcr.io and should be using registry.k8s.io instead", container.Name, pod.Namespace, pod.Name),
 				)
 			}
-			if strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", resources.RegistryGCR)) ||
-				strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", resources.RegistryEUGCR)) ||
-				strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", resources.RegistryUSGCR)) {
+			if strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", legacyRegistryGCR)) ||
+				strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", legacyRegistryEUGCR)) ||
+				strings.HasPrefix(container.Image, fmt.Sprintf("%s/k8s-", legacyRegistryUSGCR)) {
 				errorMsgs = append(
 					errorMsgs,
 					fmt.Sprintf("Container %s in Pod %s/%s has image from gcr.io/k8s-* and should be using registry.k8s.io instead", container.Name, pod.Namespace, pod.Name),
@@ -205,15 +179,15 @@ func TestUserClusterNoK8sGcrImages(ctx context.Context, log *zap.SugaredLogger, 
 		}
 
 		for _, initContainer := range pod.Spec.InitContainers {
-			if strings.HasPrefix(initContainer.Image, resources.RegistryK8SGCR) {
+			if strings.HasPrefix(initContainer.Image, legacyRegistryK8SGCR) {
 				errorMsgs = append(
 					errorMsgs,
 					fmt.Sprintf("InitContainer %s in Pod %s/%s has image from k8s.gcr.io and should be using registry.k8s.io instead", initContainer.Name, pod.Namespace, pod.Name),
 				)
 			}
-			if strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", resources.RegistryGCR)) ||
-				strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", resources.RegistryEUGCR)) ||
-				strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", resources.RegistryUSGCR)) {
+			if strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", legacyRegistryGCR)) ||
+				strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", legacyRegistryEUGCR)) ||
+				strings.HasPrefix(initContainer.Image, fmt.Sprintf("%s/k8s-", legacyRegistryUSGCR)) {
 				errorMsgs = append(
 					errorMsgs,
 					fmt.Sprintf("Container %s in Pod %s/%s has image from gcr.io/k8s-* and should be using registry.k8s.io instead", initContainer.Name, pod.Namespace, pod.Name),

@@ -23,6 +23,7 @@ spec:
       creationTimestamp: null
       labels:
         app: operating-system-manager
+        cloud-credentials-secret-revision: "123456"
         cluster: de-test-01
         operatingsystemmanager-kubeconfig-secret-revision: "123456"
     spec:
@@ -47,7 +48,7 @@ spec:
             secretKeyRef:
               key: serviceAccount
               name: cloud-credentials
-        image: quay.io/kubermatic/operating-system-manager:db378951daf3f65467dbd0ff57126ba8b2a98a4c
+        image: quay.io/kubermatic/operating-system-manager:v1.6.0
         livenessProbe:
           failureThreshold: 3
           httpGet:

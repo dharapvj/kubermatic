@@ -19,7 +19,6 @@ package cloudcontroller
 import (
 	"fmt"
 
-	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
 	"k8c.io/reconciler/pkg/reconciling"
@@ -43,19 +42,12 @@ func anexiaDeploymentReconciler(data *resources.TemplateData) reconciling.NamedD
 		return AnexiaCCMDeploymentName, func(deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 			deployment.Spec.Replicas = resources.Int32(1)
 
-			podLabels, err := data.GetPodTemplateLabels(AnexiaCCMDeploymentName, deployment.Spec.Template.Spec.Volumes, nil)
-			if err != nil {
-				return nil, fmt.Errorf("unable to get pod template labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&deployment.Spec.Template, podLabels)
-
 			deployment.Spec.Template.Spec.AutomountServiceAccountToken = ptr.To(false)
 			deployment.Spec.Template.Spec.Volumes = getVolumes(data.IsKonnectivityEnabled(), true)
 			deployment.Spec.Template.Spec.Containers = []corev1.Container{
 				{
 					Name:  ccmContainerName,
-					Image: registry.Must(data.RewriteImage(resources.RegistryAnexia + "/anexia/anx-cloud-controller-manager:" + anexiaCCMVersion)),
+					Image: registry.Must(data.RewriteImage("anx-cr.io/anexia/anx-cloud-controller-manager:" + anexiaCCMVersion)),
 					Command: []string{
 						"/app/ccm",
 						"--cloud-provider=anexia",

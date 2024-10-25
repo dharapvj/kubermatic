@@ -19,6 +19,9 @@ spec:
       creationTimestamp: null
       labels:
         app: vsphere-cloud-controller-manager
+        ca-bundle-configmap-revision: "123456"
+        cloud-config-secret-revision: "123456"
+        cloud-controller-manager-kubeconfig-secret-revision: "123456"
         cluster: de-test-01
         component: cloud-controller-manager
         tier: control-plane
@@ -42,7 +45,7 @@ spec:
         env:
         - name: SSL_CERT_FILE
           value: /etc/kubermatic/certs/ca-bundle.pem
-        image: gcr.io/cloud-provider-vsphere/cpi/release/manager:v1.28.0
+        image: registry.k8s.io/cloud-pv-vsphere/cloud-provider-vsphere:v1.28.1
         name: cloud-controller-manager
         resources:
           limits:

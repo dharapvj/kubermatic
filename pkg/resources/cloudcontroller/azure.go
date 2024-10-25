@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
-	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
 	"k8c.io/kubermatic/v2/pkg/semver"
@@ -55,13 +54,7 @@ func azureDeploymentReconciler(data *resources.TemplateData) reconciling.NamedDe
 		return AzureCCMDeploymentName, func(dep *appsv1.Deployment) (*appsv1.Deployment, error) {
 			dep.Spec.Replicas = resources.Int32(1)
 
-			podLabels, err := data.GetPodTemplateLabels(AzureCCMDeploymentName, dep.Spec.Template.Spec.Volumes, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
-
+			var err error
 			dep.Spec.Template.Spec.DNSPolicy, dep.Spec.Template.Spec.DNSConfig, err =
 				resources.UserClusterDNSPolicyAndConfig(data)
 			if err != nil {
@@ -78,7 +71,7 @@ func azureDeploymentReconciler(data *resources.TemplateData) reconciling.NamedDe
 			dep.Spec.Template.Spec.Containers = []corev1.Container{
 				{
 					Name:         ccmContainerName,
-					Image:        registry.Must(data.RewriteImage(resources.RegistryMCR + "/oss/kubernetes/azure-cloud-controller-manager:v" + version)),
+					Image:        registry.Must(data.RewriteImage("mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager:v" + version)),
 					Command:      []string{"cloud-controller-manager"},
 					Args:         getAzureFlags(data),
 					Env:          getEnvVars(),
@@ -121,8 +114,6 @@ func AzureCCMVersion(version semver.Semver) (string, error) {
 	// gcrane ls --json mcr.microsoft.com/oss/kubernetes/azure-cloud-controller-manager | jq -r '.tags[]'
 
 	switch version.MajorMinor() {
-	case v126:
-		return "1.26.19", nil
 	case v127:
 		return "1.27.20", nil
 	case v128:

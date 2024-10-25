@@ -23,10 +23,10 @@ import (
 
 	"github.com/vmware/govmomi/simulator"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	"k8c.io/kubermatic/v2/pkg/provider"
 	"k8c.io/kubermatic/v2/pkg/resources"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 )
 
 const (
@@ -264,6 +264,17 @@ func TestProviderValidateCloudSpec(t *testing.T) {
 			dc: &kubermaticv1.DatacenterSpecVSphere{
 				DefaultDatastore:     "LocalDS_0",
 				DefaultStoragePolicy: fakeStoragePolicy,
+			},
+			spec: kubermaticv1.CloudSpec{
+				VSphere: &kubermaticv1.VSphereCloudSpec{
+					DatastoreCluster: "DC0_POD0",
+				},
+			},
+		},
+		{
+			name: "Inaccessible default datastore at datacenter level and datastore cluster at cluster level",
+			dc: &kubermaticv1.DatacenterSpecVSphere{
+				DefaultDatastore: "i-am-inaccessible",
 			},
 			spec: kubermaticv1.CloudSpec{
 				VSphere: &kubermaticv1.VSphereCloudSpec{

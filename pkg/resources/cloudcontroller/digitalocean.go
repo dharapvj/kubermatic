@@ -19,7 +19,6 @@ package cloudcontroller
 import (
 	"fmt"
 
-	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
 	"k8c.io/kubermatic/v2/pkg/semver"
@@ -53,13 +52,7 @@ func digitalOceanDeploymentReconciler(data *resources.TemplateData) reconciling.
 		return DigitalOceanCCMDeploymentName, func(dep *appsv1.Deployment) (*appsv1.Deployment, error) {
 			dep.Spec.Replicas = resources.Int32(1)
 
-			podLabels, err := data.GetPodTemplateLabels(DigitalOceanCCMDeploymentName, dep.Spec.Template.Spec.Volumes, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
-
+			var err error
 			dep.Spec.Template.Spec.DNSPolicy, dep.Spec.Template.Spec.DNSConfig, err =
 				resources.UserClusterDNSPolicyAndConfig(data)
 			if err != nil {
@@ -133,8 +126,6 @@ func DigitaloceanCCMVersion(version semver.Semver) string {
 	// by replacing the `fallthrough` with a return statement.
 
 	switch version.MajorMinor() {
-	case v126: // 22 March 2023 – 27 March 2024
-		return "v0.1.49"
 	case v127: // 30 May 2023 – 27 July 2024
 		fallthrough
 	case v128: // 18 September 2023 – 27 November 2024

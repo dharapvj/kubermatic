@@ -27,7 +27,6 @@ import (
 	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 
-	clusterv1alpha1 "github.com/kubermatic/machine-controller/pkg/apis/cluster/v1alpha1"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	"k8c.io/kubermatic/v2/pkg/applications"
 	userclustercontrollermanager "k8c.io/kubermatic/v2/pkg/controller/user-cluster-controller-manager"
@@ -53,6 +52,7 @@ import (
 	"k8c.io/kubermatic/v2/pkg/util/cli"
 	"k8c.io/kubermatic/v2/pkg/util/flagopts"
 	"k8c.io/kubermatic/v2/pkg/version/kubermatic"
+	clusterv1alpha1 "k8c.io/machine-controller/pkg/apis/cluster/v1alpha1"
 	osmv1alpha1 "k8c.io/operating-system-manager/pkg/crd/osm/v1alpha1"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -109,6 +109,7 @@ type controllerRunOptions struct {
 	applicationCache                  string
 	kubeVirtVMIEvictionController     bool
 	kubeVirtInfraKubeconfig           string
+	kubeVirtInfraNamespace            string
 }
 
 func main() {
@@ -158,6 +159,7 @@ func main() {
 	flag.StringVar(&runOp.applicationCache, "application-cache", "", "Path to Application cache directory.")
 	flag.BoolVar(&runOp.kubeVirtVMIEvictionController, "kv-vmi-eviction-controller", false, "Start the KubeVirt VMI eviction controller")
 	flag.StringVar(&runOp.kubeVirtInfraKubeconfig, "kv-infra-kubeconfig", "", "Path to the KubeVirt infra kubeconfig.")
+	flag.StringVar(&runOp.kubeVirtInfraNamespace, "kv-infra-namespace", "", "Kubevirt infra namespace where workload will be deployed")
 	flag.Parse()
 
 	rawLog := kubermaticlog.New(logOpts.Debug, logOpts.Format)
@@ -433,13 +435,18 @@ func main() {
 		if err != nil {
 			log.Fatalw("Failed to get KubeVirt infra kubeconfig", zap.Error(err))
 		}
+		// VM and VMIs are created in a namespace having the same name as the cluster namespace name.
+		kvInfraNamespace := runOp.namespace
+		// If kv-infra-namespace flag is set, that means Kubevirt is running in the namespaced mode, so all workloads will be deployed in the specified namespace.
+		if runOp.kubeVirtInfraNamespace != "" {
+			kvInfraNamespace = runOp.kubeVirtInfraNamespace
+		}
 		kubevirtInfraMgr, err := manager.New(kubevirtInfraConfig, manager.Options{
 			LeaderElection: false,
 			Metrics:        metricsserver.Options{BindAddress: "0"},
-			// VM and VMIs are created in a namespace having the same name as the cluster namespace name.
 			Cache: cache.Options{
 				DefaultNamespaces: map[string]cache.Config{
-					runOp.namespace: {},
+					kvInfraNamespace: {},
 				},
 			},
 		})

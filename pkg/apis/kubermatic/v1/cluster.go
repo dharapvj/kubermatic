@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"k8c.io/kubermatic/v2/pkg/semver"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1399,6 +1399,10 @@ type KubevirtCloudSpec struct {
 	StorageClasses []KubeVirtInfraStorageClass `json:"storageClasses,omitempty"`
 	// ImageCloningEnabled flag enable/disable cloning for a cluster.
 	ImageCloningEnabled bool `json:"imageCloningEnabled,omitempty"`
+	// VPCName  is a virtual network name dedicated to a single tenant within a KubeVirt.
+	VPCName string `json:"vpcName,omitempty"`
+	// SubnetName is the name of a subnet that is smaller, segmented portion of a larger network, like a Virtual Private Cloud (VPC).
+	SubnetName string `json:"subnetName,omitempty"`
 }
 
 type PreAllocatedDataVolume struct {

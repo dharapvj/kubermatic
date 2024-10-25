@@ -61,7 +61,6 @@ var (
 
 type etcdStatefulSetReconcilerData interface {
 	Cluster() *kubermaticv1.Cluster
-	GetPodTemplateLabels(string, []corev1.Volume, map[string]string) (map[string]string, error)
 	RewriteImage(string) (string, error)
 	EtcdDiskSize() resource.Quantity
 	EtcdLauncherImage() string
@@ -108,13 +107,6 @@ func StatefulSetReconciler(data etcdStatefulSetReconcilerData, enableDataCorrupt
 			set.Spec.Template.Name = name
 			set.Spec.Template.Spec.ServiceAccountName = rbac.EtcdLauncherServiceAccountName
 
-			volumes := getVolumes()
-			podLabels, err := data.GetPodTemplateLabels(resources.EtcdStatefulSetName, volumes, baseLabels)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create pod labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&set.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&set.Spec.Template, map[string]string{
 				// NB: We purposefully do not want to use the cluster-last-restart annotation here to
 				// restart etcd, as that would lead to multiple complete restarts during an etcd restore.
@@ -236,7 +228,7 @@ func StatefulSetReconciler(data etcdStatefulSetReconcilerData, enableDataCorrupt
 				{
 					Name: resources.EtcdStatefulSetName,
 
-					Image:           registry.Must(data.RewriteImage(resources.RegistryGCR + "/etcd-development/etcd:" + imageTag)),
+					Image:           registry.Must(data.RewriteImage(resources.RegistryK8S + "/etcd:" + imageTag + "-0")),
 					ImagePullPolicy: corev1.PullIfNotPresent,
 					Command:         getEtcdCommand(data.Cluster(), enableDataCorruptionChecks, launcherEnabled),
 					Env:             etcdEnv,
@@ -331,7 +323,7 @@ func StatefulSetReconciler(data etcdStatefulSetReconcilerData, enableDataCorrupt
 
 			set.Spec.Template.Spec.NodeSelector = data.Cluster().Spec.ComponentsOverride.Etcd.NodeSelector
 
-			set.Spec.Template.Spec.Volumes = volumes
+			set.Spec.Template.Spec.Volumes = getVolumes()
 
 			// Make sure we don't change volume claim template of existing sts
 			if len(set.Spec.VolumeClaimTemplates) == 0 {
@@ -413,7 +405,10 @@ func GetBasePodLabels(cluster *kubermaticv1.Cluster) map[string]string {
 	return resources.BaseAppLabels(resources.EtcdStatefulSetName, additionalLabels)
 }
 
-// ImageTag returns the correct etcd image tag for a given Cluster
+// ImageTag returns the correct etcd image tag for a given Cluster. Note that this tag does not
+// contain the "-0" suffix that the registry.k8s.io images have appended to them. This is because
+// semver comparisons then fail further up in the code and it's simpler to treat the "-0" suffix
+// as not part of the etcd tag itself.
 // TODO: Other functions use this function, switch them to getLauncherImage.
 func ImageTag(c *kubermaticv1.Cluster) string {
 	// most other control plane parts refer to the controller-manager's version, which
@@ -428,7 +423,7 @@ func ImageTag(c *kubermaticv1.Cluster) string {
 	// 	return "v3.4.3"
 	// }
 
-	return "v3.5.9"
+	return "3.5.9"
 }
 
 func computeReplicas(data etcdStatefulSetReconcilerData, set *appsv1.StatefulSet) int32 {

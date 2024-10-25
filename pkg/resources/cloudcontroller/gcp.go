@@ -63,16 +63,11 @@ func gcpDeploymentReconciler(data *resources.TemplateData) reconciling.NamedDepl
 		return GCPCCMDeploymentName, func(dep *appsv1.Deployment) (*appsv1.Deployment, error) {
 			dep.Spec.Replicas = resources.Int32(1)
 
-			podLabels, err := data.GetPodTemplateLabels(GCPCCMDeploymentName, dep.Spec.Template.Spec.Volumes, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&dep.Spec.Template, map[string]string{
 				resources.ClusterAutoscalerSafeToEvictVolumesAnnotation: "scratch",
 			})
 
+			var err error
 			dep.Spec.Template.Spec.DNSPolicy, dep.Spec.Template.Spec.DNSConfig, err =
 				resources.UserClusterDNSPolicyAndConfig(data)
 			if err != nil {
@@ -137,10 +132,6 @@ func gcpDeploymentReconciler(data *resources.TemplateData) reconciling.NamedDepl
 						"--authorization-kubeconfig=/etc/kubernetes/kubeconfig/kubeconfig",
 						"--authentication-kubeconfig=/etc/kubernetes/kubeconfig/kubeconfig",
 						"--allocate-node-cidrs",
-						// gkenetworkparamset is disabled by default starting with 1.27.x CCM releases,
-						// see https://github.com/kubernetes/cloud-provider-gcp/pull/521
-						// disabling this controller reduces log spam
-						"--controllers=*,-gkenetworkparamset",
 						fmt.Sprintf("--cluster-name=%s", data.Cluster().Name),
 						fmt.Sprintf("--cluster-cidr=%s", data.Cluster().Spec.ClusterNetwork.Pods.GetIPv4CIDR()),
 					},
@@ -221,8 +212,6 @@ func GCPCCMVersion(version semver.Semver) string {
 	// gcrane ls --json registry.k8s.io/cloud-provider-gcp/cloud-controller-manager | jq -r '.tags[]'
 
 	switch version.MajorMinor() {
-	case v126:
-		return "v26.2.4"
 	case v127:
 		return "v27.1.6"
 	case v128:

@@ -26,6 +26,7 @@ package resources
 
 import (
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrlruntimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -53,6 +54,11 @@ func ResourcesForDeletion() []ctrlruntimeclient.Object {
 		&rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: clusterRoleBindingName,
+			},
+		},
+		&apiextensionsv1.CustomResourceDefinition{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: SyncSecretCRDName,
 			},
 		},
 	}

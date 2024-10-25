@@ -22,12 +22,12 @@ import (
 	"net"
 	"strings"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	kubermaticv1helper "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1/helper"
 	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/apiserver"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 	"k8c.io/reconciler/pkg/reconciling"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -59,7 +59,6 @@ var (
 // This makes importing the deployment elsewhere (openshift controller)
 // easier as only have to implement the parts that are actually in use.
 type userclusterControllerData interface {
-	GetPodTemplateLabels(string, []corev1.Volume, map[string]string) (map[string]string, error)
 	GetLegacyOverwriteRegistry() string
 	RewriteImage(string) (string, error)
 	Cluster() *kubermaticv1.Cluster
@@ -112,13 +111,6 @@ func DeploymentReconciler(data userclusterControllerData) reconciling.NamedDeplo
 			}
 			dep.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: resources.ImagePullSecretName}}
 
-			volumes := getVolumes(data)
-			podLabels, err := data.GetPodTemplateLabels(resources.UserClusterControllerDeploymentName, volumes, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create pod labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&dep.Spec.Template, map[string]string{
 				"prometheus.io/scrape":                 "true",
 				"prometheus.io/path":                   "/metrics",
@@ -127,8 +119,6 @@ func DeploymentReconciler(data userclusterControllerData) reconciling.NamedDeplo
 				// these volumes should not block the autoscaler from evicting the pod
 				resources.ClusterAutoscalerSafeToEvictVolumesAnnotation: strings.Join([]string{resources.ApplicationCacheVolumeName, "temp"}, ","),
 			})
-
-			dep.Spec.Template.Spec.Volumes = volumes
 
 			dnsClusterIP, err := resources.UserClusterDNSResolverIP(data.Cluster())
 			if err != nil {
@@ -223,6 +213,9 @@ func DeploymentReconciler(data userclusterControllerData) reconciling.NamedDeplo
 			if data.Cluster().Spec.Cloud.Kubevirt != nil {
 				args = append(args, "-kv-vmi-eviction-controller")
 				args = append(args, "-kv-infra-kubeconfig", "/etc/kubernetes/kubevirt/infra-kubeconfig")
+				if data.DC().Spec.Kubevirt != nil && data.DC().Spec.Kubevirt.NamespacedMode != nil && data.DC().Spec.Kubevirt.NamespacedMode.Enabled {
+					args = append(args, "-kv-infra-namespace", data.DC().Spec.Kubevirt.NamespacedMode.Namespace)
+				}
 			}
 
 			if data.UserClusterMLAEnabled() && data.Cluster().Spec.MLA != nil {
@@ -318,6 +311,8 @@ func DeploymentReconciler(data userclusterControllerData) reconciling.NamedDeplo
 					},
 				},
 			}
+
+			dep.Spec.Template.Spec.Volumes = getVolumes(data)
 
 			err = resources.SetResourceRequirements(dep.Spec.Template.Spec.Containers, defaultResourceRequirements, resources.GetOverrides(data.Cluster().Spec.ComponentsOverride), dep.Annotations)
 			if err != nil {

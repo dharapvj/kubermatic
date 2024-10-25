@@ -22,10 +22,11 @@ package v1
 
 import (
 	"encoding/json"
-	"github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	templatesv1 "github.com/open-policy-agent/frameworks/constraint/pkg/apis/templates/v1"
 	"k8c.io/kubermatic/v2/pkg/semver"
+	"k8c.io/machine-controller/pkg/providerconfig/types"
 	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -4229,6 +4230,28 @@ func (in *KubeVirtInfraStorageClass) DeepCopyInto(out *KubeVirtInfraStorageClass
 		in, out := &in.IsDefaultClass, &out.IsDefaultClass
 		*out = new(bool)
 		**out = **in
+	}
+	if in.VolumeBindingMode != nil {
+		in, out := &in.VolumeBindingMode, &out.VolumeBindingMode
+		*out = new(storagev1.VolumeBindingMode)
+		**out = **in
+	}
+	if in.Labels != nil {
+		in, out := &in.Labels, &out.Labels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Zones != nil {
+		in, out := &in.Zones, &out.Zones
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Regions != nil {
+		in, out := &in.Regions, &out.Regions
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 }
 

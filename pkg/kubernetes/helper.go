@@ -19,6 +19,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"sort"
 	"strconv"
@@ -26,11 +27,11 @@ import (
 
 	"go.uber.org/zap"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	kubermaticlog "k8c.io/kubermatic/v2/pkg/log"
 	"k8c.io/kubermatic/v2/pkg/provider"
 	ksemver "k8c.io/kubermatic/v2/pkg/semver"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -384,7 +385,7 @@ func EnsureUniqueOwnerReference(o metav1.Object, ref metav1.OwnerReference) {
 }
 
 func EnsureLabels(o metav1.Object, toEnsure map[string]string) {
-	labels := o.GetLabels()
+	labels := maps.Clone(o.GetLabels())
 
 	if labels == nil {
 		labels = make(map[string]string)
@@ -396,7 +397,7 @@ func EnsureLabels(o metav1.Object, toEnsure map[string]string) {
 }
 
 func EnsureAnnotations(o metav1.Object, toEnsure map[string]string) {
-	annotations := o.GetAnnotations()
+	annotations := maps.Clone(o.GetAnnotations())
 
 	if annotations == nil {
 		annotations = make(map[string]string)

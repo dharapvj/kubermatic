@@ -21,12 +21,12 @@ import (
 
 	semverlib "github.com/Masterminds/semver/v3"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	"k8c.io/kubermatic/v2/pkg/kubernetes"
 	"k8c.io/kubermatic/v2/pkg/resources"
 	"k8c.io/kubermatic/v2/pkg/resources/apiserver"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 	"k8c.io/reconciler/pkg/reconciling"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -54,11 +54,10 @@ var (
 
 const (
 	Name = "machine-controller"
-	Tag  = "107e3514d267ee1d626432e1aa91843f45b6e690"
+	Tag  = "v1.60.0"
 )
 
 type machinecontrollerData interface {
-	GetPodTemplateLabels(string, []corev1.Volume, map[string]string) (map[string]string, error)
 	GetGlobalSecretKeySelectorValue(configVar *providerconfig.GlobalSecretKeySelector, key string) (string, error)
 	RewriteImage(string) (string, error)
 	Cluster() *kubermaticv1.Cluster
@@ -103,26 +102,7 @@ func DeploymentReconcilerWithoutInitWrapper(data machinecontrollerData) reconcil
 			dep.Spec.Selector = &metav1.LabelSelector{
 				MatchLabels: baseLabels,
 			}
-			dep.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: resources.ImagePullSecretName}}
 
-			volumes := []corev1.Volume{
-				getKubeconfigVolume(),
-				getCABundleVolume(),
-				{
-					Name: "temp",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
-				},
-			}
-			dep.Spec.Template.Spec.Volumes = volumes
-
-			podLabels, err := data.GetPodTemplateLabels(Name, volumes, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create pod labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&dep.Spec.Template, map[string]string{
 				"prometheus.io/scrape":                 "true",
 				"prometheus.io/path":                   "/metrics",
@@ -210,7 +190,19 @@ func DeploymentReconcilerWithoutInitWrapper(data machinecontrollerData) reconcil
 				},
 			}
 
+			dep.Spec.Template.Spec.Volumes = []corev1.Volume{
+				getKubeconfigVolume(),
+				getCABundleVolume(),
+				{
+					Name: "temp",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			}
+
 			dep.Spec.Template.Spec.ServiceAccountName = serviceAccountName
+			dep.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: resources.ImagePullSecretName}}
 
 			err = resources.SetResourceRequirements(dep.Spec.Template.Spec.Containers, controllerResourceRequirements, nil, dep.Annotations)
 			if err != nil {

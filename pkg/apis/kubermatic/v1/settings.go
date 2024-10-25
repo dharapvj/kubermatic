@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,7 +137,7 @@ type SettingSpec struct {
 
 // AnnotationSettings is the settings for the annotations.
 type AnnotationSettings struct {
-	// +kubebuilder:default:={"kubectl.kubernetes.io/last-applied-configuration", "kubermatic.io/initial-application-installations-request", "kubermatic.io/initial-machinedeployment-request"}
+	// +kubebuilder:default:={"kubectl.kubernetes.io/last-applied-configuration", "kubermatic.io/initial-application-installations-request", "kubermatic.io/initial-machinedeployment-request", "kubermatic.io/initial-cni-values-request"}
 
 	// HiddenAnnotations are the annotations that are hidden from the user in the UI.
 	// +optional

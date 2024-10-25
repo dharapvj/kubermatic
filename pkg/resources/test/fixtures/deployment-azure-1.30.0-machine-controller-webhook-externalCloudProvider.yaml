@@ -21,6 +21,7 @@ spec:
       labels:
         app: machine-controller-webhook
         ca-bundle-configmap-revision: "123456"
+        cloud-credentials-secret-revision: "123456"
         cluster: de-test-01
         machinecontroller-kubeconfig-secret-revision: "123456"
         machinecontroller-webhook-serving-cert-secret-revision: "123456"
@@ -81,7 +82,7 @@ spec:
               fieldPath: metadata.namespace
         - name: PROBER_KUBECONFIG
           value: /etc/kubernetes/worker-kubeconfig/kubeconfig
-        image: quay.io/kubermatic/machine-controller:107e3514d267ee1d626432e1aa91843f45b6e690
+        image: quay.io/kubermatic/machine-controller:v1.60.0
         livenessProbe:
           failureThreshold: 8
           httpGet:

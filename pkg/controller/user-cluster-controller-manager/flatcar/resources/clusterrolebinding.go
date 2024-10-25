@@ -20,27 +20,26 @@ import (
 	"k8c.io/reconciler/pkg/reconciling"
 
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	OperatorClusterRoleBindingName = "flatcar-linux-update-operator"
-	AgentClusterRoleBindingName    = "flatcar-linux-update-agent"
+	operatorClusterRoleBindingName = "flatcar-linux-update-operator"
+	agentClusterRoleBindingName    = "flatcar-linux-update-agent"
 )
 
-func OperatorClusterRoleBindingReconciler() reconciling.NamedClusterRoleBindingReconcilerFactory {
+func OperatorClusterRoleBindingReconciler(operatorNamespace string) reconciling.NamedClusterRoleBindingReconcilerFactory {
 	return func() (string, reconciling.ClusterRoleBindingReconciler) {
-		return OperatorClusterRoleBindingName, func(crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+		return operatorClusterRoleBindingName, func(crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
 			crb.RoleRef = rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     "ClusterRole",
-				Name:     OperatorClusterRoleName,
+				Name:     operatorClusterRoleName,
 			}
 			crb.Subjects = []rbacv1.Subject{
 				{
 					Kind:      "ServiceAccount",
-					Name:      OperatorServiceAccountName,
-					Namespace: metav1.NamespaceSystem,
+					Name:      operatorServiceAccountName,
+					Namespace: operatorNamespace,
 				},
 			}
 			return crb, nil
@@ -48,19 +47,19 @@ func OperatorClusterRoleBindingReconciler() reconciling.NamedClusterRoleBindingR
 	}
 }
 
-func AgentClusterRoleBindingReconciler() reconciling.NamedClusterRoleBindingReconcilerFactory {
+func AgentClusterRoleBindingReconciler(operatorNamespace string) reconciling.NamedClusterRoleBindingReconcilerFactory {
 	return func() (string, reconciling.ClusterRoleBindingReconciler) {
-		return AgentClusterRoleBindingName, func(crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
+		return agentClusterRoleBindingName, func(crb *rbacv1.ClusterRoleBinding) (*rbacv1.ClusterRoleBinding, error) {
 			crb.RoleRef = rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
 				Kind:     "ClusterRole",
-				Name:     AgentClusterRoleName,
+				Name:     agentClusterRoleName,
 			}
 			crb.Subjects = []rbacv1.Subject{
 				{
 					Kind:      "ServiceAccount",
-					Name:      AgentServiceAccountName,
-					Namespace: metav1.NamespaceSystem,
+					Name:      agentServiceAccountName,
+					Namespace: operatorNamespace,
 				},
 			}
 			return crb, nil

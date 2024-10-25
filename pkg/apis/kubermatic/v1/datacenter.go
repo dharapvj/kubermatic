@@ -19,11 +19,12 @@ package v1
 import (
 	"strings"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	"k8c.io/kubermatic/v2/pkg/version/kubermatic"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -462,7 +463,7 @@ type DatacenterSpec struct {
 	EnforcePodSecurityPolicy bool `json:"enforcePodSecurityPolicy,omitempty"`
 
 	// Optional: ProviderReconciliationInterval is the time that must have passed since a
-	// Cluster's status.lastProviderReconciliation to make the cliuster controller
+	// Cluster's status.lastProviderReconciliation to make the cluster controller
 	// perform an in-depth provider reconciliation, where for example missing security
 	// groups will be reconciled.
 	// Setting this too low can cause rate limits by the cloud provider, setting this
@@ -845,6 +846,19 @@ type KubeVirtInfraStorageClass struct {
 	// If missing or false, annotation will be:
 	// storageclass.kubernetes.io/is-default-class : false
 	IsDefaultClass *bool `json:"isDefaultClass,omitempty"`
+	// VolumeBindingMode indicates how PersistentVolumeClaims should be provisioned and bound. When unset,
+	// VolumeBindingImmediate is used.
+	VolumeBindingMode *storagev1.VolumeBindingMode `json:"volumeBindingMode,omitempty"`
+	// Labels is a map of string keys and values that can be used to organize and categorize
+	// (scope and select) objects. May match selectors of replication controllers
+	// and services.
+	Labels map[string]string `json:"labels,omitempty"`
+	// Zones represent a logical failure domain. It is common for Kubernetes clusters to span multiple zones
+	// for increased availability
+	Zones []string `json:"zones,omitempty"`
+	// Regions represents a larger domain, made up of one or more zones. It is uncommon for Kubernetes clusters
+	// to span multiple regions
+	Regions []string `json:"regions,omitempty"`
 }
 
 // CustomNetworkPolicy contains a name and the Spec of a NetworkPolicy.

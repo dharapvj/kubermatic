@@ -29,7 +29,6 @@ import (
 	semverlib "github.com/Masterminds/semver/v3"
 	"go.uber.org/zap"
 
-	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
 	httpproberapi "k8c.io/kubermatic/v2/cmd/http-prober/api"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	kubermaticv1helper "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1/helper"
@@ -39,6 +38,7 @@ import (
 	"k8c.io/kubermatic/v2/pkg/resources/certificates/triple"
 	"k8c.io/kubermatic/v2/pkg/resources/registry"
 	"k8c.io/kubermatic/v2/pkg/version/kubermatic"
+	providerconfig "k8c.io/machine-controller/pkg/providerconfig/types"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -449,12 +449,6 @@ func (d *TemplateData) GetMLAGatewayCA() (*ECDSAKeyPair, error) {
 	return GetMLAGatewayCA(d.ctx, d.cluster.Status.NamespaceName, d.client)
 }
 
-// GetPodTemplateLabels returns a set of labels for a Pod including the revisions of depending secrets and configmaps.
-// This will force pods being restarted as soon as one of the secrets/configmaps get updated.
-func (d *TemplateData) GetPodTemplateLabels(appName string, volumes []corev1.Volume, additionalLabels map[string]string) (map[string]string, error) {
-	return GetPodTemplateLabels(d.ctx, d.client, appName, d.cluster.Name, d.cluster.Status.NamespaceName, volumes, additionalLabels)
-}
-
 // GetOpenVPNServerPort returns the nodeport of the external apiserver service.
 func (d *TemplateData) GetOpenVPNServerPort() (int32, error) {
 	// When using tunneling expose strategy the port is fixed
@@ -834,6 +828,11 @@ func (data *TemplateData) GetEnvVars() ([]corev1.EnvVar, error) {
 		vars = append(vars, corev1.EnvVar{Name: "VSPHERE_USERNAME", ValueFrom: refTo(VsphereUsername)})
 		vars = append(vars, corev1.EnvVar{Name: "VSPHERE_PASSWORD", ValueFrom: refTo(VspherePassword)})
 	}
+	if cluster.Spec.Cloud.Baremetal != nil {
+		if cluster.Spec.Cloud.Baremetal.Tinkerbell != nil {
+			vars = append(vars, corev1.EnvVar{Name: "TINK_KUBECONFIG", ValueFrom: refTo(TinkerbellKubeconfig)})
+		}
+	}
 	if cluster.Spec.Cloud.Packet != nil {
 		vars = append(vars, corev1.EnvVar{Name: "PACKET_API_KEY", ValueFrom: refTo(PacketAPIKey)})
 		vars = append(vars, corev1.EnvVar{Name: "PACKET_PROJECT_ID", ValueFrom: refTo(PacketProjectID)})
@@ -888,18 +887,4 @@ func (data *TemplateData) GetEnvVars() ([]corev1.EnvVar, error) {
 	}
 
 	return vars, nil
-}
-
-// GetPodCIDR returns the PodCIDR configured for the nodes in the cluster.
-func (d *TemplateData) GetPodCIDR() (string, error) {
-	nodeList := &corev1.NodeList{}
-	err := d.client.List(d.ctx, nodeList)
-	if err != nil {
-		return "", fmt.Errorf("could not get node list: %w", err)
-	}
-
-	if len(nodeList.Items) > 0 {
-		return nodeList.Items[0].Spec.PodCIDR, nil
-	}
-	return "", nil
 }

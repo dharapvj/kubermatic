@@ -79,7 +79,7 @@ func (h *AdmissionHandler) Handle(ctx context.Context, req webhook.AdmissionRequ
 		allErrs = append(allErrs, validation.ValidateApplicationInstallationUpdate(ctx, h.client, *ad, *oldAD)...)
 
 	case admissionv1.Delete:
-		if err := h.decoder.Decode(req, ad); err != nil {
+		if err := h.decoder.DecodeRaw(req.OldObject, ad); err != nil {
 			return webhook.Errored(http.StatusBadRequest, err)
 		}
 		allErrs = append(allErrs, validation.ValidateApplicationInstallationDelete(ctx, h.client, h.clusterName, *ad)...)
@@ -89,7 +89,7 @@ func (h *AdmissionHandler) Handle(ctx context.Context, req webhook.AdmissionRequ
 	}
 
 	if len(allErrs) > 0 {
-		return webhook.Denied(fmt.Sprintf("ApplicationInstallation validation request %s denied: %v", req.UID, allErrs))
+		return webhook.Denied(fmt.Sprintf("ApplicationInstallation validation request %s denied for ApplicationInstallation %s/%s with error: %v", req.UID, ad.Namespace, ad.Name, allErrs))
 	}
 
 	return webhook.Allowed(fmt.Sprintf("ApplicationInstallation validation request %s allowed", req.UID))

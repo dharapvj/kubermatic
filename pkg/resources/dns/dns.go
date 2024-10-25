@@ -52,8 +52,6 @@ var (
 // source: https://github.com/kubernetes/kubernetes/blob/vX.YY.0/cmd/kubeadm/app/constants/constants.go
 func CoreDNSVersion(clusterVersion *semverlib.Version) string {
 	switch fmt.Sprintf("%d.%d", clusterVersion.Major(), clusterVersion.Minor()) {
-	case "1.26":
-		return "v1.9.3"
 	case "1.27":
 		fallthrough
 	default:
@@ -87,7 +85,6 @@ func ServiceReconciler() reconciling.NamedServiceReconcilerFactory {
 
 type deploymentReconcilerData interface {
 	Cluster() *kubermaticv1.Cluster
-	GetPodTemplateLabels(string, []corev1.Volume, map[string]string) (map[string]string, error)
 	RewriteImage(string) (string, error)
 	IsKonnectivityEnabled() bool
 }
@@ -106,13 +103,6 @@ func DeploymentReconciler(data deploymentReconcilerData) reconciling.NamedDeploy
 			}
 			dep.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{{Name: resources.ImagePullSecretName}}
 
-			volumes := getVolumes(data.IsKonnectivityEnabled())
-			podLabels, err := data.GetPodTemplateLabels(resources.DNSResolverDeploymentName, volumes, nil)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get pod labels: %w", err)
-			}
-
-			kubernetes.EnsureLabels(&dep.Spec.Template, podLabels)
 			kubernetes.EnsureAnnotations(&dep.Spec.Template, map[string]string{
 				"prometheus.io/path":                   "/metrics",
 				"prometheus.io/scrape":                 "true",
@@ -162,12 +152,13 @@ func DeploymentReconciler(data deploymentReconcilerData) reconciling.NamedDeploy
 				)
 				defResourceRequirements[openvpnSidecar.Name] = openvpnSidecar.Resources.DeepCopy()
 			}
-			err = resources.SetResourceRequirements(dep.Spec.Template.Spec.Containers, defResourceRequirements, nil, dep.Annotations)
+
+			err := resources.SetResourceRequirements(dep.Spec.Template.Spec.Containers, defResourceRequirements, nil, dep.Annotations)
 			if err != nil {
 				return nil, fmt.Errorf("failed to set resource requirements: %w", err)
 			}
 
-			dep.Spec.Template.Spec.Volumes = volumes
+			dep.Spec.Template.Spec.Volumes = getVolumes(data.IsKonnectivityEnabled())
 
 			dep.Spec.Template.Spec.Affinity = resources.HostnameAntiAffinity(resources.DNSResolverDeploymentName, kubermaticv1.AntiAffinityTypePreferred)
 
